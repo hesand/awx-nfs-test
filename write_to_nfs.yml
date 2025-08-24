@@ -1,0 +1,31 @@
+---
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Show mounts that include our NFS path
+      command: sh -lc "mount | grep -E '/mnt/data_soft_share|data_software| type nfs ' || true"
+      register: mounts
+      changed_when: false
+
+    - debug:
+        var: mounts.stdout_lines
+
+    - name: Ensure test directory exists on the NFS share
+      file:
+        path: /mnt/data_soft_share/awx_test
+        state: directory
+        mode: "0777"
+
+    - name: Write a marker file on the NFS share
+      copy:
+        dest: "/mnt/data_soft_share/awx_test/awx_{{ inventory_hostname }}_{{ lookup('pipe','date +%Y%m%d%H%M%S') }}.txt"
+        content: "Hello from AWX at {{ inventory_hostname }}\n"
+        mode: "0666"
+
+    - name: List files we just wrote
+      command: ls -l /mnt/data_soft_share/awx_test
+      register: listing
+      changed_when: false
+
+    - debug:
+        var: listing.stdout_lines
